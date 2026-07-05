@@ -3,7 +3,7 @@ import { Navbar } from '../components/Navbar'
 import { Footer } from '../components/Footer'
 import { Modal } from '../components/Modal'
 import { CartDrawer } from '../components/shop/CartDrawer'
-import { ContactFormPopup } from '../components/shop/ContactFormPopup'
+import { ContactFormPopup } from '../components/shop/ContactFormPopUp'
 import {
   ArrowLeft,
   Maximize2,
