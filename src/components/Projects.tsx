@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal } from './Modal';
 import { ArrowRight, Maximize2 } from 'lucide-react';
+import { fetchAllProjects, getMediaUrl } from '../services/projectService';
+
 interface Project {
   id: number;
   title: string;
@@ -9,100 +11,48 @@ interface Project {
   description: string;
   technicalDetails: string[];
 }
-const projectsData: Project[] = [
-{
-  id: 1,
-  title: 'Modern Floor Heating',
-  category: 'Heating',
-  image:
-  'https://images.unsplash.com/photo-1513694203232-719a280e022f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-  description:
-  'Complete installation of a hydronic radiant floor heating system in a 3,000 sq ft newly constructed modern home. The system provides even, energy-efficient heat throughout the entire living space.',
-  technicalDetails: [
-  'PEX tubing network',
-  'High-efficiency condensing boiler',
-  'Smart multi-zone thermostats',
-  'Automated pressure regulation']
 
-},
-{
-  id: 2,
-  title: 'External Heat Pump Retrofit',
-  category: 'Cooling & Heating',
-  image:
-  'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-  description:
-  'Installation of a high-capacity external air-source heat pump for a historic home, providing modern climate control without requiring invasive interior ductwork or renovation.',
-  technicalDetails: [
-  '18 SEER Heat Pump',
-  'Minimal interior footprint',
-  'Weather-resistant external housing',
-  'Integrated with existing radiators']
-
-},
-{
-  id: 3,
-  title: 'Full Plumbing Overhaul',
-  category: 'Plumbing',
-  image:
-  'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-  description:
-  "Complete redesign and replacement of a 50-year-old home's plumbing system. Included new main lines, custom manifold distribution, and high-end fixture installations.",
-  technicalDetails: [
-  'Copper main lines',
-  'PEX manifold system',
-  'Tankless water heater integration',
-  'Advanced leak detection sensors']
-
-},
-{
-  id: 4,
-  title: 'Industrial Boiler Setup',
-  category: 'Heating',
-  image:
-  'https://images.unsplash.com/photo-1581094288338-2314dddb7ece?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-  description:
-  'Commercial-grade boiler installation for a boutique hotel, ensuring consistent hot water delivery and heating across 20+ rooms simultaneously.',
-  technicalDetails: [
-  'Dual commercial boilers',
-  'Redundant pump system',
-  'Custom welded steel piping',
-  'Digital BMS integration']
-
-},
-{
-  id: 5,
-  title: 'Smart Climate Control',
-  category: 'System Design',
-  image:
-  'https://images.unsplash.com/photo-1558002038-1055907df827?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-  description:
-  'Design and implementation of a fully automated home climate system, integrating HVAC, floor heating, and ventilation into a single smart interface.',
-  technicalDetails: [
-  'Centralized control hub',
-  'Room-by-room micro-zoning',
-  'Humidity control integration',
-  'Energy usage analytics']
-
-},
-{
-  id: 6,
-  title: 'Custom Radiator Design',
-  category: 'Heating',
-  image:
-  'https://images.unsplash.com/photo-1605810230434-7631ac76ec81?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-  description:
-  'Installation of architectural, high-output radiators in a luxury loft space. The system balances aesthetic requirements with the high heating demands of an open-plan space.',
-  technicalDetails: [
-  'Cast iron architectural radiators',
-  'Custom pipe routing',
-  'Thermostatic valves',
-  'High-flow circulation pumps']
-
-}];
+// Transform Strapi article data to Project interface
+const transformArticleToProject = (article: any): Project => {
+  return {
+    id: article.id,
+    title: article.title || 'Untitled',
+    category: article.category?.name || 'General',
+    image: getMediaUrl(article.cover) || 'https://via.placeholder.com/800x600?text=No+Image',
+    description: article.description || 'No description available',
+    technicalDetails: article.technicalDetails ? article.technicalDetails.split(',').map((detail: string) => detail.trim()) : [],
+  };
+};
 
 export function Projects() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadProjects = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const articles = await fetchAllProjects();
+        
+        if (articles && Array.isArray(articles)) {
+          const transformedProjects = articles.map(transformArticleToProject);
+          setProjects(transformedProjects);
+        } else {
+          setError('No projects found');
+        }
+      } catch (err) {
+        console.error('Failed to load projects:', err);
+        setError('Failed to load projects. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProjects();
+  }, []);
   return (
     <section id="projects" className="py-24 bg-brandBlack text-brandWhite">
       <div className="max-w-7xl mx-auto px-6">
@@ -122,7 +72,25 @@ export function Projects() {
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {projectsData.map((project) =>
+          {loading && (
+            <div className="col-span-full py-16 text-center">
+              <p className="text-brandWhite/60">Loading projects...</p>
+            </div>
+          )}
+
+          {error && (
+            <div className="col-span-full py-16 text-center">
+              <p className="text-red-400">{error}</p>
+            </div>
+          )}
+
+          {!loading && !error && projects.length === 0 && (
+            <div className="col-span-full py-16 text-center">
+              <p className="text-brandWhite/60">No projects available yet</p>
+            </div>
+          )}
+
+          {!loading && projects.map((project) =>
           <div
             key={project.id}
             className="group relative overflow-hidden rounded-sm cursor-pointer bg-brandWhite/5 border border-white/10"
